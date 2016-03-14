@@ -1,10 +1,12 @@
 package tests
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -19,12 +21,13 @@ var uuidRegExp = `[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`
 
 var _ = Describe("Apps", func() {
 	var testApp App
-
-	BeforeEach(func() {
-		testApp.Name = getRandAppName()
-	})
+	var exampleRepo = "example-go"
 
 	Context("with no app", func() {
+
+		BeforeEach(func() {
+			testApp.Name = getRandAppName()
+		})
 
 		It("can't get app info", func() {
 			sess, _ := start("deis info -a %s", testApp.Name)
@@ -109,22 +112,16 @@ var _ = Describe("Apps", func() {
 	})
 
 	Context("with a deployed app", func() {
-		var cleanup bool
-		var testApp App
+		once := &sync.Once{}
 
 		BeforeEach(func() {
-			cleanup = true
-			os.Chdir("example-go")
-			appName := getRandAppName()
-			createApp(appName)
-			testApp = deployApp(appName)
-		})
-
-		AfterEach(func() {
-			defer os.Chdir("..")
-			if cleanup {
-				destroyApp(testApp)
-			}
+			// Set up the test app only once and assume the suite will clean up.
+			once.Do(func() {
+				os.Chdir(exampleRepo)
+				testApp.Name = getRandAppName()
+				createApp(testApp.Name)
+				testApp = deployApp(testApp.Name)
+			})
 		})
 
 		It("can't create an existing app", func() {
@@ -138,7 +135,7 @@ var _ = Describe("Apps", func() {
 			verifyAppInfo(testApp)
 		})
 
-		// V broken
+		// TODO: https://github.com/deis/workflow-e2e/issues/84
 		XIt("can get app logs", func() {
 			cmd, err := start("deis logs")
 			Expect(err).NotTo(HaveOccurred())
@@ -158,38 +155,50 @@ var _ = Describe("Apps", func() {
 			Eventually(sess, (1 * time.Minute)).Should(Say("Hello, 世界"))
 		})
 
-		It("can transfer the app to another owner", func() {
-			_, err := start("deis apps:transfer " + testAdminUser)
-			Expect(err).NotTo(HaveOccurred())
-			sess, _ := start("deis info -a %s", testApp.Name)
-			Eventually(sess).Should(Exit(1))
-			Eventually(sess.Err).Should(Say("You do not have permission to perform this action."))
-			// destroy it ourselves because the spec teardown cannot destroy as regular user
-			cleanup = false
-			login(url, testAdminUser, testAdminPassword)
-			destroyApp(testApp)
-			// log back in and continue with the show
-			login(url, testUser, testPassword)
+		Context("with an app transfer", func() {
+			once := &sync.Once{}
+
+			BeforeEach(func() {
+				// Set up the test app only once and assume the suite will clean up.
+				once.Do(func() {
+					os.Chdir(exampleRepo)
+					testApp.Name = getRandAppName()
+					createApp(testApp.Name)
+					testApp = deployApp(testApp.Name)
+				})
+			})
+
+			AfterEach(func() {
+				defer os.Chdir("..")
+			})
+
+			It("can transfer the app to another owner", func() {
+				_, err := start("deis apps:transfer " + testAdminUser)
+				Expect(err).NotTo(HaveOccurred())
+				sess, _ := start("deis info -a %s", testApp.Name)
+				Eventually(sess).Should(Exit(1))
+				Eventually(sess.Err).Should(Say("You do not have permission to perform this action."))
+				// destroy it ourselves because the spec teardown cannot destroy as regular user
+				login(url, testAdminUser, testAdminPassword)
+				destroyApp(testApp)
+				// log back in and continue with the show
+				login(url, testUser, testPassword)
+			})
 		})
 	})
 
 	Context("with a custom buildpack deployed app", func() {
-		var cleanup bool
-		var testApp App
+		once := &sync.Once{}
 
 		BeforeEach(func() {
-			cleanup = true
-			os.Chdir("example-perl")
-			appName := getRandAppName()
-			createApp(appName, "--buildpack", "https://github.com/miyagawa/heroku-buildpack-perl.git")
-			testApp = deployApp(appName)
-		})
-
-		AfterEach(func() {
-			defer os.Chdir("..")
-			if cleanup {
-				destroyApp(testApp)
-			}
+			exampleRepo = "example-perl"
+			// Set up the test app only once and assume the suite will clean up.
+			once.Do(func() {
+				os.Chdir(exampleRepo)
+				testApp.Name = getRandAppName()
+				createApp(testApp.Name, "--buildpack", "https://github.com/miyagawa/heroku-buildpack-perl.git")
+				testApp = deployApp(testApp.Name)
+			})
 		})
 
 		It("can get app info", func() {
@@ -236,7 +245,7 @@ func verifyAppOpen(testApp App) {
 	env := shims.PrependPath(os.Environ(), os.TempDir())
 
 	// invoke functionality under test
-	sess, err := startCmd(Cmd{Env: env, CommandLineString: "deis open"})
+	sess, err := startCmd(Cmd{Env: env, CommandLineString: fmt.Sprintf("deis open -a %s", testApp.Name)})
 	Expect(err).To(BeNil())
 	Eventually(sess).Should(Exit(0))
 

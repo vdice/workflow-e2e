@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,10 +34,13 @@ var _ = Describe("Builds", func() {
 		BeforeEach(func() {
 			exampleRepo = "example-go"
 			exampleImage = fmt.Sprintf("deis/%s:latest", exampleRepo)
-			testApp.Name = getRandAppName()
 		})
 
 		Context("with no app", func() {
+			BeforeEach(func() {
+				testApp.Name = getRandAppName()
+			})
+
 			It("cannot create a build without existing app", func() {
 				cmd, err := start("deis builds:create %s -a %s", exampleImage, testApp.Name)
 				Expect(err).NotTo(HaveOccurred())
@@ -48,6 +53,7 @@ var _ = Describe("Builds", func() {
 
 			BeforeEach(func() {
 				gitInit()
+				testApp.Name = getRandAppName()
 				createApp(testApp.Name)
 				createBuild(exampleImage, testApp)
 			})
@@ -70,23 +76,22 @@ var _ = Describe("Builds", func() {
 			var cmdRetryTimeout int
 			var procFile string
 
+			once := &sync.Once{}
 			BeforeEach(func() {
 				cmdRetryTimeout = 10
-				createApp(testApp.Name, "--no-remote")
-
-				os.Chdir(exampleRepo)
-				appName := getRandAppName()
-				createApp(appName)
-				testApp = deployApp(appName)
 				procFile = fmt.Sprintf("worker: while true; do echo hi; sleep 3; done")
 
-				createBuild(exampleImage, testApp)
+				once.Do(func() {
+					os.Chdir(exampleRepo)
+					testApp.Name = getRandAppName()
+					testApp.URL = strings.Replace(url, "deis", testApp.Name, 1)
+					createApp(testApp.Name, "--no-remote")
+					createBuild(exampleImage, testApp)
+				})
 			})
 
 			AfterEach(func() {
 				defer os.Chdir("..")
-				destroyApp(testApp)
-				gitClean()
 			})
 
 			It("can list app builds", func() {
@@ -114,7 +119,7 @@ var _ = Describe("Builds", func() {
 				Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
 				Eventually(sess).Should(Exit(0))
 
-				// TODO: #84
+				// TODO: https://github.com/deis/workflow-e2e/issues/84
 				// "deis logs -a %s", app
 				// sess, err = start("deis logs -a %s", testApp.Name)
 				// Expect(err).To(BeNil())
