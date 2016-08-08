@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"os"
 	"strings"
 
 	deis "github.com/deis/controller-sdk-go"
@@ -33,55 +32,6 @@ var _ = Describe("deis apps", func() {
 			auth.Cancel(user)
 		})
 
-		Specify("that user can create an app without a git remote", func() {
-			app := apps.Create(user, "--no-remote")
-			apps.Destroy(user, app)
-		})
-
-		Specify("that user can create an app that uses a custom buildpack", func() {
-			app := apps.Create(user, "--no-remote", "--buildpack https://weird-buildpacks.io/lisp")
-			defer apps.Destroy(user, app)
-			sess, err := cmd.Start("deis config:list -a %s", &user, app.Name)
-			Eventually(sess).Should(Say("BUILDPACK_URL"))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Exit(0))
-		})
-
-		Context("and an app that does not exist", func() {
-
-			bogusAppName := "bogus-app-name"
-
-			Specify("that user cannot get information about that app", func() {
-				sess, err := cmd.Start("deis info -a %s", &user, bogusAppName)
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(1))
-			})
-
-			Specify("that user cannot retrieve logs for that app", func() {
-				sess, err := cmd.Start("deis logs -a %s", &user, bogusAppName)
-				Eventually(sess.Err).Should(Say(`Error: There are currently no log messages. Please check the following things:`))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(1))
-			})
-
-			Specify("that user cannot open that app", func() {
-				sess, err := cmd.Start("deis open -a %s", &user, bogusAppName)
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(1))
-			})
-
-			Specify("that user cannot run a command in that app's environment", func() {
-				sess, err := cmd.Start("deis apps:run -a %s echo Hello, 世界", &user, bogusAppName)
-				Eventually(sess).Should(Say("Running 'echo Hello, 世界'..."))
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).ShouldNot(Exit(0))
-			})
-
-		})
-
 		Context("who owns an existing app", func() {
 
 			var app model.App
@@ -92,13 +42,6 @@ var _ = Describe("deis apps", func() {
 
 			AfterEach(func() {
 				apps.Destroy(user, app)
-			})
-
-			Specify("that user cannot create a new app with the same name", func() {
-				sess, err := cmd.Start("deis apps:create %s", &user, app.Name)
-				Eventually(sess.Err).Should(Say("Application with this id already exists."))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).ShouldNot(Exit(0))
 			})
 
 			Context("and another user also exists", func() {
@@ -127,21 +70,6 @@ var _ = Describe("deis apps", func() {
 					Eventually(sess).Should(Exit(0))
 				})
 
-			})
-
-		})
-
-		Context("who has a local git repo containing source code", func() {
-
-			BeforeEach(func() {
-				output, err := cmd.Execute(`git clone https://github.com/deis/example-go.git`)
-				Expect(err).NotTo(HaveOccurred(), output)
-			})
-
-			Specify("that user can create an app with a git remote", func() {
-				os.Chdir("example-go")
-				app := apps.Create(user)
-				apps.Destroy(user, app)
 			})
 
 		})
@@ -195,36 +123,6 @@ var _ = Describe("deis apps", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("Hello, 世界"))
 				Eventually(sess).Should(Exit(0))
-			})
-
-			Specify("that user can run a command with dashes in that app's environment", func() {
-				sess, err := cmd.Start("deis apps:run --app=%s -- ls -alh", &user, app.Name)
-				Expect(err).NotTo(HaveOccurred())
-				// Can't assume too much about arbitrary "ls" output
-				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("total "))
-				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say(" .."))
-				Eventually(sess).Should(Exit(0))
-			})
-
-			Specify("that user can run a command with quotes in that app's environment", func() {
-				sess, err := cmd.Start("deis apps:run --app=%s echo 'Hello, \\\"高座\\\"'", &user, app.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("Hello, \"高座\""))
-				Eventually(sess).Should(Exit(0))
-			})
-
-			Specify("that user can run a command with lengthy output in that app's environment", func() {
-				sess, err := cmd.Start("deis apps:run --app=%s dd if=/dev/urandom bs=3072 count=1000", &user, app.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Exit(0))
-				Expect(len(sess.Out.Contents())).To(BeNumerically(">=", 3072000))
-			})
-
-			Specify("that user can't run a bogus command in that app's environment", func() {
-				sess, err := cmd.Start("deis apps:run --app=%s /usr/bin/boguscmd", &user, app.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess.Err, (settings.MaxEventuallyTimeout)).Should(Say("No such file or directory"))
-				Eventually(sess).ShouldNot(Exit(0))
 			})
 
 		})

@@ -25,7 +25,7 @@ else  # Skip the lengthy "all buildpacks" and "all dockerfiles" specs by default
 SKIP_OPTS := --skip="all (buildpack|dockerfile) apps"
 endif
 
-TEST_OPTS := -slowSpecThreshold=120.00 -noisyPendings=false ${GINKO_NODES_ARG} ${SKIP_OPTS} ${FOCUS_OPTS}
+TEST_OPTS := -slowSpecThreshold=120.00 -noisyPendings=false -flakeAttempts=2 ${GINKO_NODES_ARG} ${SKIP_OPTS} ${FOCUS_OPTS}
 
 DEIS_REGISTRY ?= quay.io/
 IMAGE_PREFIX ?= deis

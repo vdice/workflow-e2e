@@ -63,10 +63,6 @@ var _ = Describe("all dockerfile apps", func() {
 
 				Entry("HTTP", "https://github.com/deis/example-dockerfile-http.git", "",
 					"Powered by Deis", ""),
-				Entry("Python", "https://github.com/deis/example-dockerfile-python.git", "",
-					"Powered by Deis", ""),
-				Entry("HTTP-Web", "https://github.com/deis/example-dockerfile-procfile-http.git", "",
-					"Powered by Deis", "web"),
 			)
 
 		})

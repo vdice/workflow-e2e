@@ -1,8 +1,6 @@
 package tests
 
 import (
-	"time"
-
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
@@ -42,20 +40,6 @@ var _ = Describe("deis registry", func() {
 				apps.Destroy(user, app)
 			})
 
-			Specify("that user can list that app's registry information", func() {
-				sess, err := cmd.Start("deis registry:list --app=%s", &user, app.Name)
-				Eventually(sess).Should(Say("=== %s Registry", app.Name))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(0))
-			})
-
-			Specify("that user cannot unset an invalid registry information", func() {
-				sess, err := cmd.Start("deis registry:unset --app=%s munkafolyamat", &user, app.Name)
-				Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, app.Name))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(1))
-			})
-
 			Specify("that user can set a valid registry information", func() {
 				// Setting a port first is required for a private registry
 				sess, err := cmd.Start("deis config:set -a %s PORT=5000", &user, app.Name)
@@ -77,42 +61,6 @@ var _ = Describe("deis registry", func() {
 				Eventually(sess).Should(Say(`username\s+bob`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
-			})
-
-			Specify("that user can not deploy from a private registry due to lack of credentials", func() {
-				// do an unsuccessful deploy
-				image := "quay.io/deisci/e2e-private-registry-test"
-				sess, err := cmd.Start("deis pull --app=%s %s", &user, app.Name, image)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Say("Creating build..."))
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
-				time.Sleep(10 * time.Second)
-			})
-
-			Specify("that user can deploy from a private registry using registry credentials", func() {
-				// Setting a port first is required for a private registry
-				sess, err := cmd.Start("deis config:set -a %s PORT=5000", &user, app.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Say("Creating config"))
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
-				Eventually(sess).Should(Say(`PORT\s+5000`))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(0))
-
-				// read-only access
-				registry_creds := "TP5BS3NHW0OZ20GER4IORTIJF90J48KKJ8NX8YC7Z22N5P7WE27BRKVMQ4QAEID8"
-				sess, err = cmd.Start("deis registry:set --app=%s username=deisci+e2e_registry password=%s", &user, app.Name, registry_creds)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Registry", app.Name))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(0))
-
-				// do a successful deploy
-				image := "quay.io/deisci/e2e-private-registry-test"
-				sess, err = cmd.Start("deis pull --app=%s %s", &user, app.Name, image)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Say("Creating build..."))
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
-				time.Sleep(10 * time.Second)
 			})
 
 			Context("and registry information has already been added to the app", func() {

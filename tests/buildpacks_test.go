@@ -63,30 +63,7 @@ var _ = Describe("all buildpack apps", func() {
 				// NOTE: Keep this list up-to-date with any example apps that are added
 				// under the github/deis org, or any third-party apps that increase coverage
 				// or prevent regressions.
-				Entry("Clojure", "https://github.com/deis/example-clojure-ring.git", "",
-					"Powered by Deis"),
 				Entry("Go", "https://github.com/deis/example-go.git", "",
-					"Powered by Deis"),
-				Entry("Java", "https://github.com/deis/example-java-jetty.git", "",
-					"Powered by Deis"),
-				Entry("Multi", "https://github.com/deis/example-multi", "",
-					"Heroku Multipack Test"),
-				Entry("NodeJS", "https://github.com/deis/example-nodejs-express.git", "",
-					"Powered by Deis"),
-				Entry("Perl", "https://github.com/deis/example-perl.git",
-					"https://github.com/miyagawa/heroku-buildpack-perl.git",
-					"Powered by Deis"),
-				Entry("PHP", "https://github.com/deis/example-php.git", "",
-					"Powered by Deis"),
-				Entry("Java (Play)", "https://github.com/deis/example-play.git", "",
-					"Powered by Deis"),
-				Entry("Python (Django)", "https://github.com/deis/example-python-django.git", "",
-					"Powered by Deis"),
-				Entry("Python (Flask)", "https://github.com/deis/example-python-flask.git", "",
-					"Powered by Deis"),
-				Entry("Ruby", "https://github.com/deis/example-ruby-sinatra.git", "",
-					"Powered by Deis"),
-				Entry("Scala", "https://github.com/deis/example-scala.git", "",
 					"Powered by Deis"),
 			)
 

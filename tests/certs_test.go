@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
@@ -24,8 +23,6 @@ import (
 
 var _ = Describe("deis certs", func() {
 
-	nonExistentCertName := "non-existent-cert"
-
 	var cert model.Cert
 
 	BeforeEach(func() {
@@ -42,95 +39,6 @@ var _ = Describe("deis certs", func() {
 
 		AfterEach(func() {
 			auth.Cancel(user)
-		})
-
-		Specify("that user cannot add a cert with a malformed name", func() {
-			sess, err := cmd.Start("deis certs:add %s %s %s", &user, "bogus.cert.name", cert.CertPath, cert.KeyPath)
-			// TODO: Figure out spacing issues that necessitate this workaround.
-			output := sess.Wait().Err.Contents()
-			Expect(strings.TrimSpace(string(output))).To(Equal(util.PrependError(deis.ErrInvalidName)))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Exit(1))
-		})
-
-		Specify("that user cannot add a cert using a non-existent cert file", func() {
-			nonExistentCertFile := "non.existent.cert"
-			sess, err := cmd.Start("deis certs:add %s %s %s", &user, cert.Name, nonExistentCertFile, cert.KeyPath)
-			Eventually(sess.Err).Should(Say("open %s: no such file or directory", nonExistentCertFile))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Exit(1))
-		})
-
-		Specify("that user cannot add a cert using a non-existent key file", func() {
-			nonExistentKeyFile := "non.existent.key"
-			sess, err := cmd.Start("deis certs:add %s %s %s", &user, cert.Name, cert.CertPath, nonExistentKeyFile)
-			Eventually(sess.Err).Should(Say("open %s: no such file or directory", nonExistentKeyFile))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Exit(1))
-		})
-
-		Specify("that user cannot add a cert with the key and cert files swapped", func() {
-			sess, err := cmd.Start("deis certs:add %s %s %s", &user, cert.Name, cert.KeyPath, cert.CertPath)
-			Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrInvalidCertificate)))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Exit(1))
-		})
-
-		Specify("that user cannot get info on a non-existent cert", func() {
-			sess, err := cmd.Start("deis certs:info %s", &user, nonExistentCertName)
-			Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Exit(1))
-		})
-
-		Specify("that user cannot remove a non-existent cert", func() {
-			sess, err := cmd.Start("deis certs:remove %s", &user, nonExistentCertName)
-			Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Exit(1))
-		})
-
-		Context("who owns an existing app", func() {
-
-			var app model.App
-
-			BeforeEach(func() {
-				app = apps.Create(user, "--no-remote")
-			})
-
-			AfterEach(func() {
-				apps.Destroy(user, app)
-			})
-
-			Context("with a domain added to it", func() {
-
-				var domain string
-
-				BeforeEach(func() {
-					domain = getRandDomain()
-					domains.Add(user, app, domain)
-				})
-
-				AfterEach(func() {
-					domains.Remove(user, app, domain)
-				})
-
-				Specify("that user cannot attach a non-existent cert to that domain", func() {
-					sess, err := cmd.Start("deis certs:attach %s %s", &user, nonExistentCertName, domain)
-					Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess).Should(Exit(1))
-				})
-
-				Specify("that user cannot detatch a non-existent cert from that domain", func() {
-					sess, err := cmd.Start("deis certs:detach %s %s", &user, nonExistentCertName, domain)
-					Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess).Should(Exit(1))
-				})
-
-			})
-
 		})
 
 		Context("who owns an existing cert", func() {

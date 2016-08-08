@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("deis builds procfile", func() {
+var _ = XDescribe("deis builds procfile", func() {
 
 	Context("with an existing user", func() {
 

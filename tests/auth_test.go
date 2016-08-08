@@ -49,11 +49,6 @@ var _ = Describe("deis auth", func() {
 			auth.Cancel(user)
 		})
 
-		Specify("that user can log out", func() {
-			auth.Logout(user)
-			auth.Login(user) // Log back in so cleanup won't fail.
-		})
-
 		Specify("a new user cannot register using the same details", func() {
 			sess, err := cmd.Start("deis auth:register %s --username=%s --password=%s --email=%s", nil, settings.DeisControllerURL, user.Username, user.Password, user.Email)
 			Eventually(sess.Err).Should(Say("Registration failed"))

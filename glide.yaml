@@ -1,6 +1,7 @@
 package: github.com/deis/workflow-e2e
 import:
 - package: github.com/onsi/ginkgo
+  version: 74c678d97c305753605c338c6c78c49ec104b5e7
 - package: github.com/onsi/gomega
   subpackages:
   - gbytes
