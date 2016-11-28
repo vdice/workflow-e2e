@@ -11,6 +11,7 @@ spec:
     image: quay.io/{{.Values.org}}/workflow-e2e:{{.Values.docker_tag}}
     imagePullPolicy: {{.Values.pull_policy}}
     env:
+       # set GINKGO_NODES to 1 to run all tests sequentially
       - name: GINKGO_NODES
         value: "{{.Values.ginko_nodes}}"
       - name: JUNIT
